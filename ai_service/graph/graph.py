@@ -1,9 +1,18 @@
 from langgraph.graph import StateGraph, END
 from graph.state import AgentState
-from graph.nodes.supervisor import supervisor_node
-from graph.nodes.planner import planner_node
-from graph.nodes.research import research_node
-from graph.nodes.reviewer import reviewer_node
+
+# Import nodes from the new agents directories
+from agents.supervisor.agent import supervisor_node
+from agents.planner.agent import planner_node
+from agents.research.agent import research_node
+from agents.drafting.agent import drafting_node
+from agents.citation.agent import citation_node
+from agents.review.agent import review_node
+from agents.contract.agent import contract_node
+from agents.summarizer.agent import summarizer_node
+from agents.compliance.agent import compliance_node
+from agents.calculator.agent import calculator_node
+
 from graph.conditions.routing import route_supervisor, route_reviewer
 
 def create_graph():
@@ -14,29 +23,49 @@ def create_graph():
     workflow.add_node("supervisor", supervisor_node)
     workflow.add_node("planner", planner_node)
     workflow.add_node("research", research_node)
-    workflow.add_node("reviewer", reviewer_node)
+    workflow.add_node("drafting", drafting_node)
+    workflow.add_node("citation", citation_node)
+    workflow.add_node("review", review_node)
+    
+    workflow.add_node("contract", contract_node)
+    workflow.add_node("summarizer", summarizer_node)
+    workflow.add_node("compliance", compliance_node)
+    workflow.add_node("calculator", calculator_node)
     
     # Add edges
     workflow.set_entry_point("supervisor")
     
-    # Supervisor conditionally routes to planner or END
+    # Supervisor conditionally routes to specific tasks
     workflow.add_conditional_edges(
         "supervisor",
         route_supervisor,
-        {"planner": "planner", "__end__": END}
+        {
+            "planner": "planner", 
+            "contract": "contract",
+            "summarizer": "summarizer",
+            "compliance": "compliance",
+            "calculator": "calculator",
+            "__end__": END
+        }
     )
     
-    # Planner goes to Research
+    # Planner -> Research -> Drafting -> Citation -> Review
     workflow.add_edge("planner", "research")
-    
-    # Research goes to Reviewer
-    workflow.add_edge("research", "reviewer")
+    workflow.add_edge("research", "drafting")
+    workflow.add_edge("drafting", "citation")
+    workflow.add_edge("citation", "review")
     
     # Reviewer conditionally goes back to Planner or END
     workflow.add_conditional_edges(
-        "reviewer",
+        "review",
         route_reviewer,
         {"planner": "planner", "__end__": END}
     )
+    
+    # Specialized tasks go to END after they finish
+    workflow.add_edge("contract", END)
+    workflow.add_edge("summarizer", END)
+    workflow.add_edge("compliance", END)
+    workflow.add_edge("calculator", END)
     
     return workflow.compile()
