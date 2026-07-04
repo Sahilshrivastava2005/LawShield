@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import asyncio
 
 from chat.chat_service import ChatService
-from chat.history import clear_session_history
+from memory.conversation import get_conversation
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -39,5 +39,6 @@ async def chat(request: ChatRequest):
 
 @router.delete("/history/{session_id}")
 async def clear_history(session_id: str):
-    clear_session_history(session_id)
+    get_conversation(session_id).clear()
     return {"status": "success", "message": f"History cleared for {session_id}"}
+

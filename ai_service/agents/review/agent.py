@@ -4,30 +4,29 @@ from llm.providers.factory import get_llm_provider
 import json
 import re
 
-def reviewer_node(state: AgentState) -> dict:
-    """Reviews the generated research data against the original plan and request."""
+def review_node(state: AgentState) -> dict:
+    """Reviews the final drafted and cited content against the plan and request."""
     model = get_llm_provider().get_model()
     
     plan = state.get("plan", "")
-    latest_research = state["research_data"][-1] if state.get("research_data") else ""
+    draft = state.get("draft_content", "")
     user_req = state["messages"][0].content if state["messages"] else ""
     
-    prompt = f"""You are a Reviewer agent.
-Review the following research against the original request and plan.
-Determine if it fully answers the user's request.
+    prompt = f"""You are a Legal Reviewer agent.
+Review the following drafted response against the original request and plan.
+Determine if it fully answers the user's request and is legally sound.
 Return a JSON object with a 'status' key (must be 'approved' or 'rejected') and a 'final_answer' key containing the synthesized final response to the user.
 
 Request: {user_req}
 Plan: {plan}
-Research: {latest_research}
+Drafted Response: {draft}
 """
     
     response = model.invoke([HumanMessage(content=prompt)])
     
     try:
-        # Extract JSON robustly: find first '{' and scan for balanced closing '}'
+        # Extract JSON robustly
         raw = response.content
-        # Strip markdown fences first
         cleaned = raw.strip()
         for fence in ["```json", "```"]:
             cleaned = cleaned.replace(fence, "")
@@ -35,7 +34,6 @@ Research: {latest_research}
         
         start = cleaned.find('{')
         if start != -1:
-            # Walk forward to find the balanced closing brace
             depth = 0
             end = start
             for i, ch in enumerate(cleaned[start:], start=start):
@@ -51,7 +49,7 @@ Research: {latest_research}
             data = json.loads(cleaned)
         
         status = data.get("status", "approved")
-        final_answer = data.get("final_answer", latest_research)
+        final_answer = data.get("final_answer", draft)
     except Exception:
         # Fallback: treat the full response as the final answer
         status = "approved"
