@@ -19,7 +19,7 @@ from memory.vector import save_to_vector_memory, search_vector_memory
 logger = logging.getLogger(__name__)
 
 # Nodes that place a finished answer in ``state["messages"]``
-_TERMINAL_NODES = {"review", "contract", "compliance", "summarizer", "calculator"}
+_TERMINAL_NODES = {"review", "contract", "compliance", "summarizer", "calculator", "reasoning"}
 
 # Default blank state (keeps keys consistent with AgentState)
 _BLANK_STATE = {

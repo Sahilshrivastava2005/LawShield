@@ -1,12 +1,12 @@
 from graph.state import AgentState
 from typing import Literal
 
-def route_supervisor(state: AgentState) -> Literal["planner", "contract", "summarizer", "compliance", "calculator", "__end__"]:
+def route_supervisor(state: AgentState) -> Literal["planner", "contract", "summarizer", "compliance", "calculator", "reasoning", "__end__"]:
     """Route based on Supervisor's decision."""
     next_node = state.get("next_node")
     if next_node == "FINISH" or next_node == "__end__":
         return "__end__"
-    if next_node in ["contract", "summarizer", "compliance", "calculator"]:
+    if next_node in ["contract", "summarizer", "compliance", "calculator", "reasoning"]:
         return next_node
     return "planner"
 

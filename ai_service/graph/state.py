@@ -41,3 +41,9 @@ class AgentState(TypedDict):
     compliance_report: str
     summary: str
     calculation_result: str
+    
+    # ── Legal Reasoning outputs (Phase 10) ──────────────────────────────────
+    reasoning_output: str
+    reasoning_confidence: float
+    reasoning_iterations: int  # How many reasoning passes ran (1 = no refinement, 2 = refined)
+

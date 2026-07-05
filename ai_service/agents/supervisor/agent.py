@@ -23,7 +23,7 @@ from llm.providers.factory import get_llm_provider
 
 logger = logging.getLogger(__name__)
 
-_VALID_ROUTES = {"planner", "contract", "summarizer", "compliance", "calculator", "FINISH"}
+_VALID_ROUTES = {"planner", "contract", "summarizer", "compliance", "calculator", "reasoning", "FINISH"}
 
 
 def supervisor_node(state: AgentState) -> dict:
@@ -41,10 +41,11 @@ Decide which specialist agent should handle the user's request.
 
 Available routes:
 - "planner"    → complex legal research, analysis, or advice
-- "contract"   → review, compare, or draft a contract / clause
+- "contract"   → standard contract review, comparison, or drafting
 - "summarizer" → summarise a long legal text
 - "compliance" → check whether a document meets regulatory requirements
 - "calculator" → date deadlines, damages, capital gain, or any maths
+- "reasoning"  → deep legal thinking, contract risk evaluation, explaining risks, and suggesting mitigations
 - "FINISH"     → greeting, small-talk, or anything requiring a direct reply
 
 Respond with ONLY valid JSON, e.g. {{"next": "planner"}}

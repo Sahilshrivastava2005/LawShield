@@ -9,13 +9,16 @@ from chat.router import router as chat_router
 from llm.router import router as llm_router
 from document_processing.router import router as doc_router
 from rag.router import router as rag_router
+from workflow.router import router as workflow_router
+from evaluation.router import router as evaluation_router
+from communication.router import router as communication_router
 
-# Setup basic logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+from fastapi import Response
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from observability import initialize_observability, ObservabilityMiddleware
+
+# Initialize tracing, structured logging, and metrics
+initialize_observability()
 
 app = FastAPI(
     title="AI Foundation API",
@@ -23,17 +26,30 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Register instrumentation middleware
+app.add_middleware(ObservabilityMiddleware)
+
 # Include routers
 app.include_router(chat_router)
 app.include_router(llm_router)
 app.include_router(doc_router)
 app.include_router(rag_router)
+app.include_router(workflow_router)
+app.include_router(evaluation_router)
+app.include_router(communication_router)
 
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
+@app.get("/metrics", tags=["Observability"])
+async def metrics():
+    """
+    Exposes Prometheus metrics for scraping.
+    """
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting AI Service...")
+    logging.info("Starting AI Service...")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

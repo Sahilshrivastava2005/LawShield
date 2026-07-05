@@ -12,6 +12,7 @@ from agents.contract.agent import contract_node
 from agents.summarizer.agent import summarizer_node
 from agents.compliance.agent import compliance_node
 from agents.calculator.agent import calculator_node
+from agents.reasoning.agent import reasoning_node
 
 from graph.conditions.routing import route_supervisor, route_reviewer
 
@@ -31,6 +32,7 @@ def create_graph():
     workflow.add_node("summarizer", summarizer_node)
     workflow.add_node("compliance", compliance_node)
     workflow.add_node("calculator", calculator_node)
+    workflow.add_node("reasoning", reasoning_node)
     
     # Add edges
     workflow.set_entry_point("supervisor")
@@ -45,6 +47,7 @@ def create_graph():
             "summarizer": "summarizer",
             "compliance": "compliance",
             "calculator": "calculator",
+            "reasoning": "reasoning",
             "__end__": END
         }
     )
@@ -67,5 +70,6 @@ def create_graph():
     workflow.add_edge("summarizer", END)
     workflow.add_edge("compliance", END)
     workflow.add_edge("calculator", END)
+    workflow.add_edge("reasoning", END)
     
     return workflow.compile()

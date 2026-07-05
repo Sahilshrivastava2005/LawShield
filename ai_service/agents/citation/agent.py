@@ -1,60 +1,60 @@
 """
-Citation node – formats and appends Bluebook citations to the draft.
+Citation node – parses, verifies, formats, and appends citations to the legal draft.
 """
 from __future__ import annotations
 
 import logging
-
-from langchain_core.messages import HumanMessage, ToolMessage
-
 from graph.state import AgentState
-from llm.providers.factory import get_llm_provider
-from tools.citation import format_citation
+from citations.builder import CitationBuilder
+from citations.verifier import CitationVerifier
+from citations.formatter import CitationFormatter
+from citations.exporter import CitationExporter
 
 logger = logging.getLogger(__name__)
 
-_TOOLS = [format_citation]
-_TOOL_MAP = {t.name: t for t in _TOOLS}
-
-
 def citation_node(state: AgentState) -> dict:
-    """Add properly formatted legal citations to the draft."""
-    base_model = get_llm_provider().get_model()
-    model = base_model.bind_tools(_TOOLS)
+    """
+    Identifies, verifies, and appends legal citations to the draft document.
+    """
+    logger.info("Starting Citation Engine node...")
 
     draft = state.get("draft_content", "")
-    research = (state.get("research_data") or [""])[-1]
+    # Combine all historical research data to verify grounding
+    research_source = "\n\n".join(state.get("research_data", []))
 
-    prompt = f"""You are a Legal Citation specialist.
-Review the draft below and the research it was based on.
-Use the format_citation tool to format any case references found in the research into Bluebook style.
-Return the COMPLETE updated draft with citations appended at the end.
+    # Initialize builder, verifier, and exporter
+    builder = CitationBuilder()
+    verifier = CitationVerifier()
+    exporter = CitationExporter()
 
-Research:
-{research}
+    # Step 1: Extract candidate citations from draft and research content
+    candidates = builder.extract_from_text(draft + "\n" + research_source)
 
-Draft:
-{draft}
-"""
+    verified_citations = []
+    formatted_citations = []
 
-    ai_msg = model.invoke([HumanMessage(content=prompt)])
-    extra_messages = [ai_msg]
-    citation_list: list[str] = []
+    # Step 2: Grounding verification and formatting
+    for citation in candidates:
+        verify_res = verifier.verify(citation, research_source)
+        
+        # Keep only verified citations with reasonable confidence (e.g., > 0.5)
+        if verify_res.get("verified", False) or verify_res.get("confidence", 0.0) >= 0.5:
+            verified_citations.append(citation)
+            
+            # Format using Bluebook for cases, statutory for statutes
+            if citation.volume and citation.reporter and citation.first_page:
+                formatted = CitationFormatter.format_bluebook(citation)
+            else:
+                formatted = CitationFormatter.format_statutory(citation)
+                
+            formatted_citations.append(formatted)
 
-    if hasattr(ai_msg, "tool_calls") and ai_msg.tool_calls:
-        for tc in ai_msg.tool_calls:
-            tool_fn = _TOOL_MAP.get(tc["name"])
-            try:
-                result = tool_fn.invoke(tc["args"]) if tool_fn else f"Unknown tool: {tc['name']}"
-                citation_list.append(str(result))
-            except Exception as exc:
-                result = f"Tool error: {exc}"
-            extra_messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+    # Step 3: Append the Table of Authorities to the draft
+    style = "bluebook" if any(c.volume for c in verified_citations) else "statutory"
+    cited_draft = exporter.append_to_document(draft, verified_citations, style=style)
 
-        synthesis = model.invoke([HumanMessage(content=prompt)] + extra_messages)
-        cited_draft = synthesis.content
-    else:
-        cited_draft = ai_msg.content
-
-    logger.info("Citation completed; %d citations added", len(citation_list))
-    return {"draft_content": cited_draft, "citations": citation_list}
+    logger.info("Citation node completed. Added %d verified citations.", len(verified_citations))
+    return {
+        "draft_content": cited_draft,
+        "citations": formatted_citations
+    }
